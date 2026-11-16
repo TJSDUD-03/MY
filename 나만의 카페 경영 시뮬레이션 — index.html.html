@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>나만의 카페 경영 시뮬레이션</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #fbf5ec;
+    --card: #ffffff;
+    --brown: #6f4e37;
+    --brown-dark: #4a3324;
+    --caramel: #c98a4b;
+    --cream: #f3e6d3;
+    --green: #5b8c5a;
+    --red: #c8553d;
+    --text: #3b2a20;
+    --muted: #8a7566;
+    --line: #eadbc8;
+    --radius: 16px;
+  }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    font-family: 'Pretendard', 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+    background:
+      radial-gradient(circle at 10% 0%, #fff1dc 0, transparent 40%),
+      radial-gradient(circle at 100% 20%, #f6e3cb 0, transparent 35%),
+      var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 20px 16px 40px;
+  }
+
+  .container { max-width: 980px; margin: 0 auto; }
+
+  /* ===== 헤더 ===== */
+  header { text-align: center; padding: 18px 0 22px; }
+  header .icon { font-size: 2.4rem; display: block; margin-bottom: 4px; }
+  h1 {
+    font-size: clamp(1.4rem, 5vw, 2.1rem);
+    color: var(--brown-dark);
+    letter-spacing: -0.5px;
+  }
+  header p { color: var(--muted); margin-top: 6px; font-size: 0.95rem; }
+
+  /* ===== 레이아웃 ===== */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr;          /* 모바일: 세로 배치 */
+    gap: 16px;
+  }
+  @media (min-width: 760px) {
+    .grid { grid-template-columns: 1fr 1fr; gap: 20px; }
+    .chart-card { grid-column: 1 / -1; }
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 20px;
+    border: 1px solid var(--line);
+    box-shadow: 0 6px 20px rgba(111, 78, 55, 0.08);
+  }
+  .card h2 {
+    font-size: 1.1rem;
+    color: var(--brown);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ===== 입력 ===== */
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+  }
+  .input-row { display: flex; gap: 8px; align-items: stretch; }
+
+  .input-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+  .input-wrap input {
+    width: 100%;
+    height: 52px;                          /* 터치 친화적 높이 */
+    padding: 0 44px 0 14px;
+    font-size: 1.15rem;                    /* iOS 확대 방지(16px 이상) */
+    font-weight: 700;
+    color: var(--brown-dark);
+    text-align: right;
+    background: #fffaf3;
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+    font-family: inherit;
+  }
+  .input-wrap input:focus {
+    border-color: var(--caramel);
+    box-shadow: 0 0 0 4px rgba(201, 138, 75, 0.2);
+  }
+  .input-wrap input.invalid {
+    border-color: var(--red);
+    background: #fff4f1;
+  }
+  .unit {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-weight: 600;
+    pointer-events: none;
+  }
+
+  .step-btn {
+    width: 52px;
+    height: 52px;
+    border: none;
+    border-radius: 12px;
+    background: var(--cream);
+    color: var(--brown);
+    font-size: 1.5rem;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background .15s, transform .08s;
+    flex-shrink: 0;
+  }
+  .step-btn:hover { background: #ecd8bd; }
+  .step-btn:active { transform: scale(0.94); }
+
+  .msg {
+    min-height: 1.2em;
+    margin-top: 5px;
+    font-size: 0.82rem;
+    color: var(--red);
+  }
+  .msg.info { color: var(--muted); }
+
+  .reset-btn {
+    width: 100%;
+    height: 52px;
+    border: none;
+    border-radius: 12px;
+    background: var(--brown);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    touch-action: manipulation;
+    transition: background .15s, transform .08s;
+  }
+  .reset-btn:hover { background: var(--brown-dark); }
+  .reset-btn:active { transform: scale(0.98); }
+
+  /* ===== 결과 ===== */
+  .results { display: flex; flex-direction: column; gap: 12px; }
+  .result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #fffaf3;
+    border: 1px solid var(--line);
+  }
+  .result-item .label { font-size: 0.92rem; color: var(--muted); font-weight: 600; }
+  .result-item .value {
+    font-size: clamp(1.1rem, 4.5vw, 1.45rem);
+    font-weight: 800;
+    color: var(--brown-dark);
+    text-align: right;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  .result-item.revenue .value { color: var(--caramel); }
+  .result-item.profit { background: #f0f7ee; border-color: #d3e5cf; }
+  .result-item.profit .value { color: var(--green); }
+  .result-item.profit.loss { background: #fff1ee; border-color: #f2cfc7; }
+  .result-item.profit.loss .value { color: var(--red); }
+
+  .sub-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 2px;
+  }
+  .sub-stats .box {
+    background: var(--cream);
+    border-radius: 12px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .sub-stats .box span { display: block; font-size: 0.78rem; color: var(--muted); }
+  .sub-stats .box b { font-size: 1rem; color: var(--brown-dark); }
+
+  .warn {
+    display: none;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fff1ee;
+    color: var(--red);
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+  .warn.show { display: block; }
+
+  /* ===== 그래프 ===== */
+  .chart-wrap { position: relative; width: 100%; }
+  #chart {
+    display: block;
+    width: 100%;
+    height: clamp(240px, 48vw, 360px);
+  }
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .legend i {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: -1px;
+  }
+
+  /* ===== 안내 ===== */
+  .notice {
+    margin-top: 20px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #fff7e6;
+    border: 1px dashed var(--caramel);
+    color: #7a5a35;
+    font-size: 0.88rem;
+    text-align: center;
+  }
+
+  @media (max-width: 420px) {
+    body { padding: 12px 10px 32px; }
+    .card { padding: 16px; }
+    .result-item { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <span class="icon">☕</span>
+    <h1>나만의 카페 경영 시뮬레이션</h1>
+    <p>가격·재료비·판매량을 바꿔 가며 하루 매출과 이익을 확인해 보세요.</p>
+  </header>
+
+  <div class="grid">
+
+    <!-- 입력 -->
+    <section class="card" aria-labelledby="in-title">
+      <h2 id="in-title">📝 운영 조건 입력</h2>
+
+      <div class="field">
+        <label for="price">커피 한 잔 판매 가격</label>
+        <div class="input-row">
+          <button type="button" class="step-btn" data-target="price" data-step="-100" aria-label="판매 가격 100원 감소">−</button>
+          <div class="input-wrap">
+            <input id="price" type="text" inputmode="numeric" autocomplete="off" value="4,000">
+            <span class="unit">원</span>
+          </div>
+          <button type="button" class="step-btn" data-target="price" data-step="100" aria-label="판매 가격 100원 증가">+</button>
+        </div>
+        <div class="msg" id="msg-price" aria-live="polite"></div>
+      </div>
+
+      <div class="field">
+        <label for="cost">커피 한 잔 재료비</label>
+        <div class="input-row">
+          <button type="button" class="step-btn" data-target="cost" data-step="-100" aria-label="재료비 100원 감소">−</button>
+          <div class="input-wrap">
+            <input id="cost" type="text" inputmode="numeric" autocomplete="off" value="1,500">
+            <span class="unit">원</span>
+          </div>
+          <button type="button" class="step-btn" data-target="cost" data-step="100" aria-label="재료비 100원 증가">+</button>
+        </div>
+        <div class="msg" id="msg-cost" aria-live="polite"></div>
+      </div>
+
+      <div class="field">
+        <label for="qty">하루 예상 판매량</label>
+        <div class="input-row">
+          <button type="button" class="step-btn" data-target="qty" data-step="-5" aria-label="판매량 5잔 감소">−</button>
+          <div class="input-wrap">
+            <input id="qty" type="text" inputmode="numeric" autocomplete="off" value="50">
+            <span class="unit">잔</span>
+          </div>
+          <button type="button" class="step-btn" data-target="qty" data-step="5" aria-label="판매량 5잔 증가">+</button>
+        </div>
+        <div class="msg" id="msg-qty" aria-live="polite"></div>
+      </div>
+
+      <button type="button" class="reset-btn" id="btn-reset">↺ 기본값으로 되돌리기</button>
+    </section>
+
+    <!-- 결과 -->
+    <section class="card" aria-labelledby="out-title">
+      <h2 id="out-title">📊 하루 예상 결과</h2>
+      <div class="results" aria-live="polite">
+        <div class="result-item revenue">
+          <span class="label">하루 예상 매출</span>
+          <span class="value" id="out-revenue">0원</span>
+        </div>
+        <div class="result-item">
+          <span class="label">전체 재료비</span>
+          <span class="value" id="out-cost">0원</span>
+        </div>
+        <div class="result-item profit" id="profit-item">
+          <span class="label">재료비 제외 이익</span>
+          <span class="value" id="out-profit">0원</span>
+        </div>
+        <div class="sub-stats">
+          <div class="box"><span>1잔당 이익</span><b id="out-unit">0원</b></div>
+          <div class="box"><span>이익률</span><b id="out-margin">0%</b></div>
+        </div>
+      </div>
+      <div class="warn" id="warn">⚠ 재료비가 판매 가격보다 높아 잔을 팔수록 손해가 납니다.</div>
+    </section>
+
+    <!-- 그래프 -->
+    <section class="card chart-card" aria-labelledby="chart-title">
+      <h2 id="chart-title">📈 매출 vs 재료비 제외 이익</h2>
+      <div class="chart-wrap">
+        <canvas id="chart" role="img" aria-label="하루 예상 매출과 재료비 제외 이익을 비교하는 막대그래프"></canvas>
+      </div>
+      <div class="legend">
+        <span><i style="background:#c98a4b"></i>하루 예상 매출</span>
+        <span><i style="background:#5b8c5a"></i>재료비 제외 이익</span>
+      </div>
+    </section>
+
+  </div>
+
+  <p class="notice">
+    ※ 이 시뮬레이션은 실제 매출을 예측하는 것이 아니라, 사용자가 입력한 조건으로 계산한 결과입니다.<br>
+    임대료·인건비·세금 등 다른 비용은 포함하지 않았습니다.
+  </p>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- 설정 ----------
+  const DEFAULTS = { price: 4000, cost: 1500, qty: 50 };
+  const LIMITS   = { price: 1000000, cost: 1000000, qty: 100000 };   // 최대값
+  const NAMES    = { price: '판매 가격', cost: '재료비', qty: '판매량' };
+
+  // ---------- DOM ----------
+  const inputs = {
+    price: document.getElementById('price'),
+    cost:  document.getElementById('cost'),
+    qty:   document.getElementById('qty'),
+  };
+  const msgs = {
+    price: document.getElementById('msg-price'),
+    cost:  document.getElementById('msg-cost'),
+    qty:   document.getElementById('msg-qty'),
+  };
+  const outRevenue = document.getElementById('out-revenue');
+  const outCost    = document.getElementById('out-cost');
+  const outProfit  = document.getElementById('out-profit');
+  const outUnit    = document.getElementById('out-unit');
+  const outMargin  = document.getElementById('out-margin');
+  const profitItem = document.getElementById('profit-item');
+  const warnEl     = document.getElementById('warn');
+  const canvas     = document.getElementById('chart');
+  const ctx        = canvas.getContext('2d');
+
+  // 현재 값 (입력이 비어 있으면 null)
+  const values = { ...DEFAULTS };
+
+  // ---------- 숫자 형식 ----------
+  const fmt  = (n) => Math.round(n).toLocaleString('ko-KR');
+  const won  = (n) => fmt(n) + '원';
+  const fmtShort = (n) => {
+    const a = Math.abs(n);
+    if (a >= 100000000) return (n / 100000000).toLocaleString('ko-KR', { maximumFractionDigits: 1 }) + '억';
+    if (a >= 10000)     return (n / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 }) + '만';
+    return fmt(n);
+  };
+
+  // ---------- 입력 검증 ----------
+  // 숫자 이외의 문자(−, ., e, 공백, 문자 등)는 모두 제거 → 음수·소수·잘못된 값 입력 불가
+  function handleInput(key) {
+    const el = inputs[key];
+    const caret = el.selectionStart ?? el.value.length;
+    const digitsBeforeCaret = el.value.slice(0, caret).replace(/\D/g, '').length;
+
+    const original = el.value;
+    let raw = original.replace(/\D/g, '');
+    const hadInvalid = /[^\d,\s]/.test(original);
+    raw = raw.replace(/^0+(?=\d)/, '');                     // 앞자리 0 제거
+
+    let note = '', isError = false;
+    if (raw === '') {
+      values[key] = null;
+      el.value = '';
+      isError = true;
+      note = `${NAMES[key]}을(를) 입력해 주세요.`;
+    } else {
+      let num = parseInt(raw, 10);
+      if (num > LIMITS[key]) {
+        num = LIMITS[key];
+        note = `최대 ${fmt(LIMITS[key])}까지 입력할 수 있어요.`;
+        isError = true;
+      } else if (hadInvalid) {
+        note = '0 이상의 숫자만 입력할 수 있어요.';
+      }
+      values[key] = num;
+      const formatted = fmt(num);
+      el.value = formatted;
+
+      // 쉼표가 들어가도 커서 위치 유지
+      let pos = 0, count = 0;
+      while (pos < formatted.length && count < digitsBeforeCaret) {
+        if (/\d/.test(formatted[pos])) count++;
+        pos++;
+      }
+      try { el.setSelectionRange(pos, pos); } catch (_) {}
+    }
+
+    el.classList.toggle('invalid', isError);
+    msgs[key].textContent = note;
+    msgs[key].className = 'msg' + (!isError && note ? ' info' : '');
+    update();
+  }
+
+  // 붙여넣기에서도 위 규칙 적용 (input 이벤트가 처리). 키 입력 단계에서 불필요한 문자 차단
+  function blockBadKeys(e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key.length === 1 && !/\d/.test(e.key)) e.preventDefault();
+  }
+
+  // +/- 버튼
+  function step(key, delta) {
+    const base = values[key] ?? 0;
+    const next = Math.min(LIMITS[key], Math.max(0, base + delta));
+    values[key] = next;
+    inputs[key].value = fmt(next);
+    inputs[key].classList.remove('invalid');
+    msgs[key].textContent = (next === LIMITS[key] && delta > 0) ? `최대 ${fmt(LIMITS[key])}까지 입력할 수 있어요.` : '';
+    msgs[key].className = 'msg info';
+    update();
+  }
+
+  // ---------- 계산 및 화면 갱신 ----------
+  let target = { revenue: 0, profit: 0, valid: true };
+  let shown  = { revenue: 0, profit: 0 };
+  let animId = null;
+
+  function update() {
+    const { price, cost, qty } = values;
+    const valid = price !== null && cost !== null && qty !== null;
+
+    if (!valid) {
+      [outRevenue, outCost, outProfit, outUnit, outMargin].forEach(el => el.textContent = '-');
+      profitItem.classList.remove('loss');
+      warnEl.classList.remove('show');
+      target = { revenue: 0, profit: 0, valid: false };
+      animateTo();
+      return;
+    }
+
+    const revenue   = price * qty;
+    const totalCost = cost * qty;
+    const profit    = revenue - totalCost;
+    const unitProfit = price - cost;
+    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+    outRevenue.textContent = won(revenue);
+    outCost.textContent    = won(totalCost);
+    outProfit.textContent  = (profit < 0 ? '−' : '') + won(Math.abs(profit));
+    outUnit.textContent    = (unitProfit < 0 ? '−' : '') + won(Math.abs(unitProfit));
+    outMargin.textContent  = (margin < 0 ? '−' : '') + Math.abs(margin).toLocaleString('ko-KR', { maximumFractionDigits: 1 }) + '%';
+
+    profitItem.classList.toggle('loss', profit < 0);
+    warnEl.classList.toggle('show', cost > price);
+
+    target = { revenue, profit, valid: true };
+    animateTo();
+  }
+
+  // ---------- 막대그래프 (Canvas, 반응형) ----------
+  function niceStep(range, ticks) {
+    const rough = range / ticks;
+    const pow = Math.pow(10, Math.floor(Math.log10(rough)));
+    const n = rough / pow;
+    const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+    return nice * pow;
+  }
+
+  function roundRectPath(x, y, w, h, r, top) {
+    // top=true: 위쪽만 둥글게, false: 아래쪽만 둥글게
+    r = Math.min(r, w / 2, Math.abs(h));
+    ctx.beginPath();
+    if (top) {
+      ctx.moveTo(x, y + h);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h);
+    } else {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y + h - r);
+      ctx.quadraticCurveTo(x, y + h, x + r, y + h);
+      ctx.lineTo(x + w - r, y + h);
+      ctx.quadraticCurveTo(x + w, y + h, x + w, y + h - r);
+      ctx.lineTo(x + w, y);
+    }
+    ctx.closePath();
+  }
+
+  function drawChart() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth;
+    const H = canvas.clientHeight;
+    if (!W || !H) return;
+    if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
+      canvas.width  = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    const small = W < 480;
+    const fontMain = small ? 12 : 14;
+    ctx.font = `600 ${fontMain}px 'Pretendard','Segoe UI','Malgun Gothic',sans-serif`;
+
+    if (!target.valid) {
+      ctx.fillStyle = '#8a7566';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('모든 값을 입력하면 그래프가 표시됩니다.', W / 2, H / 2);
+      return;
+    }
+
+    const bars = [
+      { label: '하루 예상 매출',   value: shown.revenue, real: target.revenue, color: '#c98a4b' },
+      { label: '재료비 제외 이익', value: shown.profit,  real: target.profit,  color: shown.profit < 0 ? '#c8553d' : '#5b8c5a' },
+    ];
+
+    // 축 범위
+    let maxV = Math.max(target.revenue, target.profit, shown.revenue, shown.profit, 0);
+    let minV = Math.min(0, target.profit, shown.profit);
+    if (maxV === 0 && minV === 0) maxV = 1000;
+    const ticks = small ? 4 : 5;
+    const stepV = niceStep(maxV - minV, ticks);
+    const axMax = Math.ceil(maxV / stepV) * stepV;
+    const axMin = Math.floor(minV / stepV) * stepV;
+
+    // 여백
+    const labelW = Math.max(...[axMin, axMax].map(v => ctx.measureText(fmtShort(v)).width)) + 10;
+    const padL = Math.max(small ? 40 : 52, labelW + 8);
+    const padR = 12;
+    const padT = 30;
+    const padB = small ? 34 : 38;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+    const yOf = (v) => padT + plotH - ((v - axMin) / (axMax - axMin)) * plotH;
+
+    // 격자 + 눈금
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let v = axMin; v <= axMax + stepV / 2; v += stepV) {
+      const y = Math.round(yOf(v)) + 0.5;
+      ctx.strokeStyle = v === 0 ? '#b99b82' : '#eadbc8';
+      ctx.lineWidth = v === 0 ? 1.5 : 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(W - padR, y);
+      ctx.stroke();
+      ctx.fillStyle = '#8a7566';
+      ctx.fillText(fmtShort(v), padL - 8, y);
+    }
+
+    // 막대
+    const slot = plotW / bars.length;
+    const barW = Math.min(slot * 0.55, 120);
+    const zeroY = yOf(0);
+
+    bars.forEach((b, i) => {
+      const cx = padL + slot * (i + 0.5);
+      const x = cx - barW / 2;
+      const y = yOf(b.value);
+      const h = y - zeroY;                 // 음수면 위로 (양수 값), 양수면 아래로 (음수 값)
+
+      ctx.fillStyle = b.color;
+      if (Math.abs(h) > 0.5) {
+        if (b.value >= 0) { roundRectPath(x, y, barW, zeroY - y, 8, true); }
+        else              { roundRectPath(x, zeroY, barW, y - zeroY, 8, false); }
+        ctx.fill();
+      }
+
+      // 값 라벨
+      ctx.fillStyle = '#4a3324';
+      ctx.font = `700 ${small ? 12 : 14}px 'Pretendard','Segoe UI','Malgun Gothic',sans-serif`;
+      ctx.textAlign = 'center';
+      const txt = (b.real < 0 ? '−' : '') + won(Math.abs(b.real));
+      if (b.value >= 0) {
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(txt, cx, Math.min(y, zeroY) - 6);
+      } else {
+        ctx.textBaseline = 'top';
+        ctx.fillText(txt, cx, y + 6);
+      }
+
+      // 카테고리 라벨
+      ctx.font = `600 ${fontMain}px 'Pretendard','Segoe UI','Malgun Gothic',sans-serif`;
+      ctx.fillStyle = '#6f4e37';
+      ctx.textBaseline = 'top';
+      ctx.fillText(b.label, cx, H - padB + 10);
+    });
+  }
+
+  // 값이 바뀔 때 부드럽게 변하는 애니메이션
+  function animateTo() {
+    cancelAnimationFrame(animId);
+    const from = { ...shown };
+    const start = performance.now();
+    const dur = 350;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !target.valid) {
+      shown = { revenue: target.revenue, profit: target.profit };
+      drawChart();
+      return;
+    }
+    const frame = (now) => {
+      const t = Math.min(1, (now - start) / dur);
+      const e = 1 - Math.pow(1 - t, 3);
+      shown.revenue = from.revenue + (target.revenue - from.revenue) * e;
+      shown.profit  = from.profit  + (target.profit  - from.profit)  * e;
+      drawChart();
+      if (t < 1) animId = requestAnimationFrame(frame);
+    };
+    animId = requestAnimationFrame(frame);
+  }
+
+  // ---------- 이벤트 ----------
+  Object.keys(inputs).forEach(key => {
+    inputs[key].addEventListener('input', () => handleInput(key));
+    inputs[key].addEventListener('keydown', blockBadKeys);
+    inputs[key].addEventListener('focus', (e) => setTimeout(() => e.target.select(), 0));
+    inputs[key].addEventListener('blur', () => {
+      // 비어 있으면 기본값으로 복원하지 않고 안내 유지, 단 포커스 이탈 시 정리
+      if (values[key] !== null) inputs[key].value = fmt(values[key]);
+    });
+  });
+
+  document.querySelectorAll('.step-btn').forEach(btn => {
+    btn.addEventListener('click', () => step(btn.dataset.target, parseInt(btn.dataset.step, 10)));
+  });
+
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    Object.keys(DEFAULTS).forEach(k => {
+      values[k] = DEFAULTS[k];
+      inputs[k].value = fmt(DEFAULTS[k]);
+      inputs[k].classList.remove('invalid');
+      msgs[k].textContent = '';
+    });
+    update();
+  });
+
+  // 화면 크기가 바뀌면 그래프 다시 그리기
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(() => drawChart()).observe(canvas);
+  } else {
+    window.addEventListener('resize', drawChart);
+  }
+  window.addEventListener('orientationchange', () => setTimeout(drawChart, 250));
+
+  // ---------- 시작 ----------
+  update();
+  shown = { revenue: target.revenue, profit: target.profit };
+  drawChart();
+})();
+</script>
+</body>
+</html>
